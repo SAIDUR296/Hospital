@@ -1,0 +1,675 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Generation Time: Oct 20, 2026 at 12:42 PM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `smart_hospital_erp`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `appointments`
+--
+
+CREATE TABLE `appointments` (
+  `appointment_id` int(10) UNSIGNED NOT NULL,
+  `patient_id` int(10) UNSIGNED NOT NULL,
+  `doctor_id` int(10) UNSIGNED NOT NULL,
+  `appointment_date` datetime NOT NULL,
+  `appointment_time` varchar(100) DEFAULT NULL,
+  `problem_description` text DEFAULT NULL,
+  `consultation_fee` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `serial_number` int(10) UNSIGNED DEFAULT NULL,
+  `meeting_link` varchar(255) DEFAULT NULL,
+  `visit_type` enum('New consultation','Follow-up','Emergency') NOT NULL DEFAULT 'New consultation',
+  `consultation_type` enum('Offline','Online') NOT NULL DEFAULT 'Offline',
+  `status` enum('Booked','Confirmed','Completed','Cancelled','Rescheduled') NOT NULL DEFAULT 'Booked',
+  `payment_status` enum('Paid','Due','Refunded') NOT NULL DEFAULT 'Due',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `audit_reports`
+--
+
+CREATE TABLE `audit_reports` (
+  `audit_id` bigint(20) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED DEFAULT NULL,
+  `action_type` enum('INSERT','UPDATE','DELETE','LOGIN','REPORT_GENERATED') NOT NULL,
+  `description` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `billing_invoices`
+--
+
+CREATE TABLE `billing_invoices` (
+  `invoice_id` int(10) UNSIGNED NOT NULL,
+  `patient_id` int(10) UNSIGNED NOT NULL,
+  `appointment_id` int(10) UNSIGNED DEFAULT NULL,
+  `patient_name` varchar(255) DEFAULT NULL,
+  `phone` varchar(50) DEFAULT NULL,
+  `itemized_services` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`itemized_services`)),
+  `total_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `discount` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `net_payable` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `payment_status` enum('Paid','Partial','Due') NOT NULL DEFAULT 'Due',
+  `invoice_date` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `blood_bank`
+--
+
+CREATE TABLE `blood_bank` (
+  `blood_record_id` int(10) UNSIGNED NOT NULL,
+  `patient_id` int(11) DEFAULT NULL,
+  `doctor_id` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `record_type` enum('Donor Entry','Blood Bag Stock','Blood Request') NOT NULL,
+  `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') NOT NULL,
+  `full_name` varchar(100) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `quantity_bags` int(10) UNSIGNED NOT NULL DEFAULT 1,
+  `expiry_date` date DEFAULT NULL,
+  `status` enum('Available','Reserved','Expired','Issued','Pending','Fulfilled') NOT NULL DEFAULT 'Available',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cabins_beds`
+--
+
+CREATE TABLE `cabins_beds` (
+  `bed_id` int(10) UNSIGNED NOT NULL,
+  `cabin_type` enum('General Ward','Semi-Cabin','VIP Cabin','ICU','NICU') NOT NULL,
+  `bed_number` varchar(20) NOT NULL,
+  `daily_rate` decimal(10,2) NOT NULL,
+  `availability_status` enum('Available','Occupied','Maintenance') NOT NULL DEFAULT 'Available',
+  `patient_id` int(10) UNSIGNED DEFAULT NULL,
+  `doctor_id` int(10) UNSIGNED DEFAULT NULL,
+  `emergency_note` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `doctors`
+--
+
+CREATE TABLE `doctors` (
+  `doctor_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `department_name` varchar(100) NOT NULL,
+  `specialization` varchar(100) DEFAULT NULL,
+  `qualification` varchar(150) DEFAULT NULL,
+  `license_number` varchar(50) DEFAULT NULL,
+  `consultation_fee` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `schedule_hours` varchar(255) DEFAULT NULL,
+  `availability_status` enum('Available','Busy in OT','Off Duty') NOT NULL DEFAULT 'Available',
+  `status` enum('Pending','Approved','Rejected') NOT NULL DEFAULT 'Pending',
+  `signature_image` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `emergency_ambulances`
+--
+
+CREATE TABLE `emergency_ambulances` (
+  `request_id` int(10) UNSIGNED NOT NULL,
+  `vehicle_number` varchar(50) NOT NULL,
+  `vehicle_type` enum('Basic','ICU/Cardiac','Neonatal') NOT NULL DEFAULT 'Basic',
+  `caller_name` varchar(100) DEFAULT NULL,
+  `caller_phone` varchar(20) DEFAULT NULL,
+  `pickup_location` text NOT NULL,
+  `severity_level` enum('Critical','Moderate','Stable') NOT NULL DEFAULT 'Moderate',
+  `dispatch_status` enum('Pending','Dispatched','Arrived','Completed','Cancelled') NOT NULL DEFAULT 'Pending',
+  `request_timestamp` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `finance_transactions`
+--
+
+CREATE TABLE `finance_transactions` (
+  `transaction_id` int(10) UNSIGNED NOT NULL,
+  `transaction_type` enum('Income','Expense') NOT NULL,
+  `account_head` varchar(100) NOT NULL,
+  `amount` decimal(12,2) NOT NULL,
+  `transaction_date` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inventory_items`
+--
+
+CREATE TABLE `inventory_items` (
+  `item_id` int(10) UNSIGNED NOT NULL,
+  `item_name` varchar(100) NOT NULL,
+  `category` varchar(50) DEFAULT NULL,
+  `supplier_info` varchar(255) DEFAULT NULL,
+  `quantity_in_stock` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `unit_cost` decimal(10,2) NOT NULL,
+  `reorder_level` int(10) UNSIGNED NOT NULL DEFAULT 5
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `laboratory_tests`
+--
+
+CREATE TABLE `laboratory_tests` (
+  `lab_id` int(10) UNSIGNED NOT NULL,
+  `patient_id` int(10) UNSIGNED NOT NULL,
+  `doctor_id` int(11) DEFAULT NULL,
+  `test_category` varchar(50) NOT NULL,
+  `test_name` varchar(100) NOT NULL,
+  `status` enum('Ordered','Sample Collected','Processing','Completed','Cancelled') NOT NULL DEFAULT 'Ordered',
+  `result_text` text DEFAULT NULL,
+  `report_file_url` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `cost` decimal(10,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notifications`
+--
+
+CREATE TABLE `notifications` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `message` text NOT NULL,
+  `priority` varchar(50) DEFAULT 'Normal',
+  `target_role` varchar(100) DEFAULT 'All Staff',
+  `recipient_id` int(10) UNSIGNED DEFAULT NULL,
+  `channel` enum('SMS','Email','Push Notification','WhatsApp') DEFAULT NULL,
+  `delivery_status` enum('Pending','Sent','Failed') NOT NULL DEFAULT 'Pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `ot_management`
+--
+
+CREATE TABLE `ot_management` (
+  `ot_booking_id` int(10) UNSIGNED NOT NULL,
+  `room_number` varchar(50) NOT NULL,
+  `patient_id` int(10) UNSIGNED NOT NULL,
+  `lead_surgeon_id` int(10) UNSIGNED NOT NULL,
+  `anesthetist_id` int(10) UNSIGNED DEFAULT NULL,
+  `surgery_name` varchar(150) NOT NULL,
+  `scheduled_time` datetime NOT NULL,
+  `status` enum('Scheduled','In Progress','Completed','Cancelled') NOT NULL DEFAULT 'Scheduled'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `patients`
+--
+
+CREATE TABLE `patients` (
+  `patient_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED DEFAULT NULL,
+  `qr_code_url` varchar(255) DEFAULT NULL,
+  `full_name` varchar(100) NOT NULL,
+  `dob` date DEFAULT NULL,
+  `gender` enum('Male','Female','Other') DEFAULT NULL,
+  `blood_group` enum('A+','A-','B+','B-','AB+','AB-','O+','O-') DEFAULT NULL,
+  `national_id` varchar(50) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `emergency_contact_phone` varchar(100) DEFAULT NULL,
+  `emergency_contact_name` varchar(100) DEFAULT NULL,
+  `medical_history` text DEFAULT NULL,
+  `allergies` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `payroll`
+--
+
+CREATE TABLE `payroll` (
+  `payroll_id` int(10) UNSIGNED NOT NULL,
+  `staff_id` int(10) UNSIGNED NOT NULL,
+  `month_year` char(7) NOT NULL,
+  `basic_salary` decimal(12,2) NOT NULL,
+  `net_salary` decimal(12,2) NOT NULL,
+  `status` enum('Generated','Approved','Paid') NOT NULL DEFAULT 'Generated'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `pharmacy_medicines`
+--
+
+CREATE TABLE `pharmacy_medicines` (
+  `medicine_id` int(10) UNSIGNED NOT NULL,
+  `medicine_name` varchar(100) NOT NULL,
+  `generic_name` varchar(100) DEFAULT NULL,
+  `supplier_info` varchar(255) DEFAULT NULL,
+  `batch_number` varchar(50) DEFAULT NULL,
+  `stock_quantity` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `unit_price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `expiry_date` date DEFAULT NULL,
+  `low_stock_threshold` int(10) UNSIGNED NOT NULL DEFAULT 10
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `prescriptions`
+--
+
+CREATE TABLE `prescriptions` (
+  `prescription_id` int(10) UNSIGNED NOT NULL,
+  `appointment_id` int(10) UNSIGNED NOT NULL,
+  `patient_id` int(10) UNSIGNED NOT NULL,
+  `doctor_id` int(10) UNSIGNED NOT NULL,
+  `diagnosis` text DEFAULT NULL,
+  `medicines_json` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`medicines_json`)),
+  `tests_prescribed` text DEFAULT NULL,
+  `advice` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `staff_dispatches`
+--
+
+CREATE TABLE `staff_dispatches` (
+  `dispatch_id` int(10) UNSIGNED NOT NULL,
+  `task_type` enum('Emergency Nursing','Ward Boy Assistance','Cleaning','Equipment Transport') NOT NULL,
+  `assigned_staff_id` int(10) UNSIGNED DEFAULT NULL,
+  `location_ward` varchar(100) NOT NULL,
+  `urgency` enum('High','Normal','Low') NOT NULL DEFAULT 'Normal',
+  `status` enum('Unassigned','Assigned','In Progress','Completed') NOT NULL DEFAULT 'Unassigned',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `role` enum('Admin','Doctor','Nurse','Pharmacist','Receptionist','Lab Technician','Accountant','Patient','Ward Boy','Cleaner','Support Staff') NOT NULL DEFAULT 'Patient',
+  `full_name` varchar(100) NOT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `phone_number` varchar(20) DEFAULT NULL,
+  `degree` varchar(100) DEFAULT NULL,
+  `education_qualification` varchar(255) DEFAULT NULL,
+  `registration_number` varchar(100) DEFAULT NULL,
+  `experience_years` int(11) DEFAULT NULL,
+  `status` enum('Active','Inactive','Suspended') NOT NULL DEFAULT 'Active',
+  `last_login` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `appointments`
+--
+ALTER TABLE `appointments`
+  ADD PRIMARY KEY (`appointment_id`),
+  ADD KEY `fk_appt_patient` (`patient_id`),
+  ADD KEY `fk_appt_doctor` (`doctor_id`);
+
+--
+-- Indexes for table `audit_reports`
+--
+ALTER TABLE `audit_reports`
+  ADD PRIMARY KEY (`audit_id`),
+  ADD KEY `fk_audit_user` (`user_id`);
+
+--
+-- Indexes for table `billing_invoices`
+--
+ALTER TABLE `billing_invoices`
+  ADD PRIMARY KEY (`invoice_id`),
+  ADD KEY `fk_inv_patient` (`patient_id`);
+
+--
+-- Indexes for table `blood_bank`
+--
+ALTER TABLE `blood_bank`
+  ADD PRIMARY KEY (`blood_record_id`);
+
+--
+-- Indexes for table `cabins_beds`
+--
+ALTER TABLE `cabins_beds`
+  ADD PRIMARY KEY (`bed_id`),
+  ADD UNIQUE KEY `bed_number` (`bed_number`),
+  ADD KEY `fk_bed_patient` (`patient_id`);
+
+--
+-- Indexes for table `doctors`
+--
+ALTER TABLE `doctors`
+  ADD PRIMARY KEY (`doctor_id`),
+  ADD UNIQUE KEY `user_id` (`user_id`),
+  ADD UNIQUE KEY `license_number` (`license_number`);
+
+--
+-- Indexes for table `emergency_ambulances`
+--
+ALTER TABLE `emergency_ambulances`
+  ADD PRIMARY KEY (`request_id`);
+
+--
+-- Indexes for table `finance_transactions`
+--
+ALTER TABLE `finance_transactions`
+  ADD PRIMARY KEY (`transaction_id`);
+
+--
+-- Indexes for table `inventory_items`
+--
+ALTER TABLE `inventory_items`
+  ADD PRIMARY KEY (`item_id`);
+
+--
+-- Indexes for table `laboratory_tests`
+--
+ALTER TABLE `laboratory_tests`
+  ADD PRIMARY KEY (`lab_id`),
+  ADD KEY `fk_lab_patient` (`patient_id`),
+  ADD KEY `fk_lab_doctor` (`doctor_id`);
+
+--
+-- Indexes for table `notifications`
+--
+ALTER TABLE `notifications`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `ot_management`
+--
+ALTER TABLE `ot_management`
+  ADD PRIMARY KEY (`ot_booking_id`),
+  ADD KEY `fk_ot_patient` (`patient_id`);
+
+--
+-- Indexes for table `patients`
+--
+ALTER TABLE `patients`
+  ADD PRIMARY KEY (`patient_id`),
+  ADD UNIQUE KEY `national_id` (`national_id`),
+  ADD KEY `fk_patients_user` (`user_id`);
+
+--
+-- Indexes for table `payroll`
+--
+ALTER TABLE `payroll`
+  ADD PRIMARY KEY (`payroll_id`),
+  ADD KEY `fk_payroll_staff` (`staff_id`);
+
+--
+-- Indexes for table `pharmacy_medicines`
+--
+ALTER TABLE `pharmacy_medicines`
+  ADD PRIMARY KEY (`medicine_id`);
+
+--
+-- Indexes for table `prescriptions`
+--
+ALTER TABLE `prescriptions`
+  ADD PRIMARY KEY (`prescription_id`),
+  ADD UNIQUE KEY `appointment_id` (`appointment_id`),
+  ADD KEY `fk_rx_patient` (`patient_id`),
+  ADD KEY `fk_rx_doctor` (`doctor_id`);
+
+--
+-- Indexes for table `staff_dispatches`
+--
+ALTER TABLE `staff_dispatches`
+  ADD PRIMARY KEY (`dispatch_id`),
+  ADD KEY `fk_dispatch_staff` (`assigned_staff_id`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`user_id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `email` (`email`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `appointments`
+--
+ALTER TABLE `appointments`
+  MODIFY `appointment_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `audit_reports`
+--
+ALTER TABLE `audit_reports`
+  MODIFY `audit_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `billing_invoices`
+--
+ALTER TABLE `billing_invoices`
+  MODIFY `invoice_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `blood_bank`
+--
+ALTER TABLE `blood_bank`
+  MODIFY `blood_record_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `cabins_beds`
+--
+ALTER TABLE `cabins_beds`
+  MODIFY `bed_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `doctors`
+--
+ALTER TABLE `doctors`
+  MODIFY `doctor_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `emergency_ambulances`
+--
+ALTER TABLE `emergency_ambulances`
+  MODIFY `request_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `finance_transactions`
+--
+ALTER TABLE `finance_transactions`
+  MODIFY `transaction_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `inventory_items`
+--
+ALTER TABLE `inventory_items`
+  MODIFY `item_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `laboratory_tests`
+--
+ALTER TABLE `laboratory_tests`
+  MODIFY `lab_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `notifications`
+--
+ALTER TABLE `notifications`
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `ot_management`
+--
+ALTER TABLE `ot_management`
+  MODIFY `ot_booking_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `patients`
+--
+ALTER TABLE `patients`
+  MODIFY `patient_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `payroll`
+--
+ALTER TABLE `payroll`
+  MODIFY `payroll_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `pharmacy_medicines`
+--
+ALTER TABLE `pharmacy_medicines`
+  MODIFY `medicine_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `prescriptions`
+--
+ALTER TABLE `prescriptions`
+  MODIFY `prescription_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `staff_dispatches`
+--
+ALTER TABLE `staff_dispatches`
+  MODIFY `dispatch_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `user_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `appointments`
+--
+ALTER TABLE `appointments`
+  ADD CONSTRAINT `fk_appt_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`doctor_id`),
+  ADD CONSTRAINT `fk_appt_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `audit_reports`
+--
+ALTER TABLE `audit_reports`
+  ADD CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `billing_invoices`
+--
+ALTER TABLE `billing_invoices`
+  ADD CONSTRAINT `fk_inv_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`);
+
+--
+-- Constraints for table `cabins_beds`
+--
+ALTER TABLE `cabins_beds`
+  ADD CONSTRAINT `fk_bed_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `doctors`
+--
+ALTER TABLE `doctors`
+  ADD CONSTRAINT `fk_doctors_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `laboratory_tests`
+--
+ALTER TABLE `laboratory_tests`
+  ADD CONSTRAINT `fk_lab_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`);
+
+--
+-- Constraints for table `ot_management`
+--
+ALTER TABLE `ot_management`
+  ADD CONSTRAINT `fk_ot_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`);
+
+--
+-- Constraints for table `patients`
+--
+ALTER TABLE `patients`
+  ADD CONSTRAINT `fk_patients_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `payroll`
+--
+ALTER TABLE `payroll`
+  ADD CONSTRAINT `fk_payroll_staff` FOREIGN KEY (`staff_id`) REFERENCES `users` (`user_id`);
+
+--
+-- Constraints for table `prescriptions`
+--
+ALTER TABLE `prescriptions`
+  ADD CONSTRAINT `fk_rx_appointment` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`appointment_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_rx_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`doctor_id`),
+  ADD CONSTRAINT `fk_rx_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `staff_dispatches`
+--
+ALTER TABLE `staff_dispatches`
+  ADD CONSTRAINT `fk_dispatch_staff` FOREIGN KEY (`assigned_staff_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
